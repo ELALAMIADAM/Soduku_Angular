@@ -10,87 +10,107 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
   template: `
     <div class="game-container">
       <div class="game-header">
-        <h1>Sudoku</h1>
-        <div class="hearts">
-          <span *ngFor="let heart of hearts" class="heart">❤️</span>
-        </div>
-      </div>
+        <h1>Sudoku Battle</h1>
+        <div class="header-controls">
+          <div class="theme-selection">
+            <label>Battle Theme:</label>
+            <select [(ngModel)]="selectedTheme" (change)="onThemeChange()" class="theme-select">
+              <option value="soldiers">Soldiers vs Zombies</option>
+              <option value="samurai">Samurais vs Ninjas</option>
+            </select>
+          </div>
 
-      <div class="difficulty-selection">
-        <label>Difficulty:</label>
-        <select [(ngModel)]="selectedDifficulty" (change)="onDifficultyChange()" class="difficulty-select">
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </div>
+          <div class="difficulty-selection">
+            <label>Difficulty:</label>
+            <select [(ngModel)]="selectedDifficulty" (change)="onDifficultyChange()" class="difficulty-select">
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
 
-      <div class="controls">
-        <button class="control-btn restart" (click)="restartGame()">
-          <span>🔄</span> New Game
-        </button>
-        <button class="control-btn hint" (click)="getHint()">
-          <span>💡</span> Hint
-        </button>
-        <button class="control-btn eliminate" (click)="autoEliminateNotes()">
-          <span>🧹</span> Auto-Eliminate
-        </button>
-      </div>
-
-      <div class="sudoku-grid">
-        <div *ngIf="loading" class="loading-overlay">
-          <div class="loading-spinner">⟳</div>
-          <p>Loading new puzzle...</p>
-        </div>
-        <div *ngFor="let row of board; let i = index" class="row">
-          <div *ngFor="let cell of row; let j = index" 
-               class="cell" 
-               [class.thick-right]="j === 2 || j === 5"
-               [class.thick-bottom]="i === 2 || i === 5"
-               [class.error]="hasError(i, j)"
-               [class.highlighted]="isHighlighted(i, j)"
-               (click)="openNumberPopup(i, j)">
-            <span class="cell-value">{{ cell || '' }}</span>
-            <div class="notes-grid" *ngIf="!cell && getNotes(i, j).length > 0">
-              <span *ngFor="let note of getNotes(i, j)" class="note">{{ note }}</span>
-            </div>
+          <div class="controls">
+            <button class="control-btn restart" (click)="restartGame()">
+              <span>🔄</span> New Game
+            </button>
+            <button class="control-btn hint" (click)="getHint()">
+              <span>💡</span> Hint
+            </button>
+            <button class="control-btn eliminate" (click)="autoEliminateNotes()">
+              <span>🧹</span> Auto-Eliminate
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Number selection popup -->
-      <div class="popup-backdrop" *ngIf="popupOpen" (click)="closePopup()">
-        <div class="popup" (click)="$event.stopPropagation()">
-          <div class="popup-header">
-            <div class="popup-buttons">
-              <button class="popup-btn notes-btn" [class.active]="isNotesMode" (click)="toggleNotesMode()">
-                {{ isNotesMode ? 'Numbers' : 'Notes' }}
-              </button>
+      <div class="game-board">
+        <div class="battle-status">
+          <div class="battle-title">Battle Status</div>
+          <div class="heroes-section">
+            <div class="section-title">Your Army</div>
+            <div class="heroes">
+              <span *ngFor="let hero of heroes" class="hero">{{ getHeroEmoji() }}</span>
             </div>
-            <button class="popup-btn cancel-btn" (click)="closePopup()">✕</button>
+          </div>
+          <div class="battle-image">
+            <img [src]="getBattleImage()" alt="Battle Scene" class="battle-img">
+          </div>
+          <div class="enemies-section">
+            <div class="section-title">Enemies</div>
+            <div class="enemies">
+              <span class="enemy-count">{{ getEnemyEmoji() }} × {{ enemyCount }}</span>
+            </div>
+          </div>
+        </div>
+    <div class="sudoku-grid">
+          <div *ngIf="loading" class="loading-overlay">
+            <div class="loading-spinner">⟳</div>
+            <p>Loading new puzzle...</p>
+          </div>
+      <div *ngFor="let row of board; let i = index" class="row">
+            <div *ngFor="let cell of row; let j = index" 
+                 class="cell" 
+                 [class.thick-right]="j === 2 || j === 5"
+                 [class.thick-bottom]="i === 2 || i === 5"
+                 [class.error]="hasError(i, j)"
+                 [class.highlighted]="isHighlighted(i, j)"
+                 [class.selected]="isSelected(i, j)"
+                 (click)="selectCell(i, j)">
+              <span class="cell-value">{{ cell || '' }}</span>
+              <div class="notes-grid" *ngIf="!cell && getNotes(i, j).length > 0">
+                <span *ngFor="let note of getNotes(i, j)" class="note">{{ note }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="number-panel">
+          <div class="panel-header">
+            <button class="mode-btn" [class.active]="!isNotesMode" (click)="setNumberMode()">
+              Numbers
+            </button>
+            <button class="mode-btn" [class.active]="isNotesMode" (click)="setNotesMode()">
+              Notes
+            </button>
           </div>
           
-          <div class="popup-content">
-            <div class="possibilities-grid" *ngIf="!isNotesMode">
-              <div class="possibility-item" *ngFor="let num of numbers" 
-                   [class.valid]="isValidMove(selectedCell?.row || 0, selectedCell?.col || 0, num)"
-                   [class.invalid]="!isValidMove(selectedCell?.row || 0, selectedCell?.col || 0, num)"
-                   (click)="selectNumber(num)">
-                {{ num }}
-              </div>
-              <div class="possibility-item clear" (click)="selectNumber(null)">Clear</div>
+          <div class="number-grid" *ngIf="!isNotesMode">
+            <div class="number-item" *ngFor="let num of numbers" 
+                 [class.valid]="isCorrectNumber(num)"
+                 [class.invalid]="!isCorrectNumber(num)"
+                 (click)="selectNumber(num)">
+              {{ num }}
             </div>
+            <div class="number-item clear" (click)="selectNumber(null)">Clear</div>
+          </div>
 
-            <div class="notes-options" *ngIf="isNotesMode">
-              <div class="number-option" *ngFor="let n of numbers" 
-                   [class.active]="isNoteActive(n)"
-                   [class.valid]="isValidMove(selectedCell?.row || 0, selectedCell?.col || 0, n)"
-                   [class.invalid]="!isValidMove(selectedCell?.row || 0, selectedCell?.col || 0, n)"
-                   (click)="toggleNote(n)">
-                {{ n }}
-              </div>
-              <div class="number-option clear" (click)="clearNotes()">Clear Notes</div>
+          <div class="notes-grid" *ngIf="isNotesMode">
+            <div class="note-item" *ngFor="let n of numbers" 
+                 [class.active]="isNoteActive(n)"
+                 (click)="toggleNote(n)">
+              {{ n }}
             </div>
+            <div class="note-item clear" (click)="clearNotes()">Clear Notes</div>
           </div>
         </div>
       </div>
@@ -104,14 +124,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
         </div>
       </div>
 
-      <!-- Hint Modal -->
-      <div class="modal-backdrop" *ngIf="hintMessage" (click)="clearHint()">
-        <div class="modal hint-modal" (click)="$event.stopPropagation()">
-          <h3>💡 Hint</h3>
-          <p>{{ hintMessage }}</p>
-          <button class="modal-btn" (click)="clearHint()">Got it!</button>
-        </div>
-      </div>
+
     </div>
   `,
   styles: [`
@@ -125,27 +138,41 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       box-sizing: border-box;
     }
 
+    .game-board {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
     .game-header {
       display: flex;
+      flex-direction: column;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
     .difficulty-selection {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      margin-bottom: 0.5rem;
     }
 
     .difficulty-selection label {
       color: #2c3e50;
       font-weight: 600;
+      font-size: 0.9rem;
     }
 
     .difficulty-select {
-      padding: 0.5rem;
+      padding: 0.4rem 0.6rem;
       border: 2px solid #bdc3c7;
       border-radius: 6px;
       background: white;
@@ -153,6 +180,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s ease;
+      font-size: 0.9rem;
     }
 
     .difficulty-select:hover, .difficulty-select:focus {
@@ -160,26 +188,127 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       outline: none;
     }
 
-    .hearts {
+    .battle-status {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      min-width: 200px;
+      border: 2px solid #e8f4f8;
+    }
+
+    .battle-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 0.5rem;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .heroes-section, .enemies-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #34495e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .heroes {
       display: flex;
       gap: 0.25rem;
     }
 
-    .heart {
-      font-size: 1.2rem;
-      animation: heartBeat 1s infinite;
+    .hero {
+      font-size: 1.4rem;
+      animation: heroStand 2s infinite;
+      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
     }
 
-    @keyframes heartBeat {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); }
+    .battle-image {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-top: 1px solid #ecf0f1;
+      border-bottom: 1px solid #ecf0f1;
+    }
+
+    .battle-img {
+      width: 150px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+
+    .battle-img:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .enemies {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .enemy-count {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #2c3e50;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+
+    @keyframes heroStand {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-2px); }
+    }
+
+    .theme-selection {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .theme-selection label {
+      color: #2c3e50;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .theme-select {
+      padding: 0.4rem 0.6rem;
+      border: 2px solid #bdc3c7;
+      border-radius: 6px;
+      background: white;
+      color: #2c3e50;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
+
+    .theme-select:hover, .theme-select:focus {
+      border-color: #3498db;
+      outline: none;
     }
 
     .controls {
       display: flex;
       gap: 0.5rem;
-      margin-bottom: 0.5rem;
     }
 
     .control-btn {
@@ -272,10 +401,11 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
 
     .cell {
       background-color: white;
-      padding: 8px;
+      padding: 0;
       text-align: center;
       cursor: pointer;
-      min-height: 35px;
+      width: 40px;
+      height: 40px;
       font-size: 1.2rem;
       font-weight: 500;
       color: #2c3e50;
@@ -286,27 +416,45 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       align-items: center;
       justify-content: center;
       position: relative;
+      box-sizing: border-box;
+      overflow: hidden;
     }
 
     .cell-value {
-      position: absolute;
       font-size: 1.2rem;
+      z-index: 2;
     }
 
     .notes-grid {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      right: 3px;
+      bottom: 3px;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(3, 1fr);
-      width: 100%;
-      height: 100%;
-      font-size: 0.6rem;
-      color: #666;
+      gap: 2px;
+      z-index: 1;
     }
 
     .note {
       display: flex;
       align-items: center;
       justify-content: center;
+      background: rgba(52, 152, 219, 0.1);
+      border: 1px solid rgba(52, 152, 219, 0.3);
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #2980b9;
+      min-height: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .note:hover {
+      background: rgba(52, 152, 219, 0.2);
+      border-color: rgba(52, 152, 219, 0.5);
     }
 
     .cell.error {
@@ -317,11 +465,24 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
     .cell.highlighted {
       background-color: #fff3cd;
       border-color: #f39c12;
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
     }
 
     .cell:hover {
       background: #e8f4f8;
       transform: scale(1.02);
+    }
+
+    .cell.selected {
+      background: #d4edda;
+      border-color: #28a745;
+      box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
     }
 
     .thick-right {
@@ -513,9 +674,98 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
     .number-option.clear:hover {
       background: #ffe3e3;
       border-color: #e74c3c;
-    }
+          }
 
-    .modal-backdrop {
+      .number-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        width: 200px;
+      }
+
+      .panel-header {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .mode-btn {
+        flex: 1;
+        padding: 0.5rem;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        background: #f8f9fa;
+        color: #2c3e50;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .mode-btn.active {
+        background: #3498db;
+        color: white;
+        border-color: #2980b9;
+      }
+
+      .mode-btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .number-grid, .notes-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+      }
+
+      .number-item, .note-item {
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: #2c3e50;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .number-item:hover, .note-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      }
+
+      .number-item.valid {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+      }
+
+      .number-item.invalid {
+        background: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+        opacity: 0.7;
+      }
+
+      .note-item.active {
+        background: #3498db;
+        color: white;
+        border-color: #2980b9;
+      }
+
+      .number-item.clear, .note-item.clear {
+        grid-column: span 3;
+        background: #fff3cd;
+        border-color: #ffeaa7;
+        color: #856404;
+        height: 40px;
+      }
+  
+      .modal-backdrop {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.7);
@@ -584,19 +834,21 @@ export class AppComponent implements OnInit {
   board: (number | null)[][] = Array(9).fill(null).map(() => Array(9).fill(null));
   solution: (number | null)[][] = Array(9).fill(null).map(() => Array(9).fill(null));
   numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  hearts = Array(3).fill('❤️');
+  heroes = Array(3).fill('🪖');
   gameOver = false;
   errorCells: Set<string> = new Set();
   highlightedCells: Set<string> = new Set();
   showPossibilities = false;
   isNotesMode = false;
   notes: Map<string, Set<number>> = new Map();
-  hintMessage = '';
   selectedDifficulty = 'medium';
+  selectedTheme = 'soldiers';
   loading = false;
+  enemyCount = 0;
 
-  popupOpen = false;
   selectedCell: { row: number, col: number } | null = null;
+  lastMoveCorrect: boolean | null = null;
+  gameWon = false;
 
   constructor(private http: HttpClient) {}
 
@@ -604,22 +856,123 @@ export class AppComponent implements OnInit {
     this.loadNewGame();
   }
 
+  getHeroEmoji(): string {
+    return this.selectedTheme === 'soldiers' ? '🪖' : '🥷';
+  }
+
+  getEnemyEmoji(): string {
+    return this.selectedTheme === 'soldiers' ? '🧟' : '🥷';
+  }
+
+  getBattleImage(): string {
+    if (this.selectedTheme === 'samurai') {
+      // Ninja battle images for samurai vs ninja theme
+      // Game lost
+      if (this.gameOver) {
+        return '/ninja_battle/ninja_battle_6.jpeg';
+      }
+
+      // Game won
+      if (this.gameWon) {
+        return '/ninja_battle/ninja_battle_5.jpeg';
+      }
+
+      // Last move was wrong
+      if (this.lastMoveCorrect === false) {
+        return '/ninja_battle/ninja_battle_4.jpeg';
+      }
+
+      // Last move was correct
+      if (this.lastMoveCorrect === true) {
+        return '/ninja_battle/ninja_battle_3.jpeg';
+      }
+
+      // Cell is selected, preparing to insert number
+      if (this.selectedCell) {
+        return '/ninja_battle/ninja_battle_2.jpeg';
+      }
+
+      // Default state - no cell selected
+      return '/ninja_battle/ninja_battle_1.jpeg';
+    } else {
+      // Zombie battle images for soldiers theme
+      // Game lost
+      if (this.gameOver) {
+        return '/zombie_battle/zombie_battle_6.jpeg';
+      }
+
+      // Game won
+      if (this.gameWon) {
+        return '/zombie_battle/zombie_battle_5.jpeg';
+      }
+
+      // Last move was wrong
+      if (this.lastMoveCorrect === false) {
+        return '/zombie_battle/zombie_battle_4.jpeg';
+      }
+
+      // Last move was correct
+      if (this.lastMoveCorrect === true) {
+        return '/zombie_battle/zombie_battle_3.jpeg';
+      }
+
+      // Cell is selected, preparing to insert number
+      if (this.selectedCell) {
+        return '/zombie_battle/zombie_battle_2.jpeg';
+      }
+
+      // Default state - no cell selected
+      return '/zombie_battle/zombie_battle_1.jpeg';
+    }
+  }
+
+  onThemeChange() {
+    // Update heroes based on theme
+    this.heroes = Array(3).fill(this.getHeroEmoji());
+  }
+
+  updateEnemyCount() {
+    this.enemyCount = 0;
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (this.board[i][j] === null) {
+          this.enemyCount++;
+        }
+      }
+    }
+    
+    // Check if game is won
+    if (this.enemyCount === 0) {
+      this.gameWon = true;
+    }
+  }
+
   onDifficultyChange() {
     this.loadNewGame();
   }
 
-  openNumberPopup(row: number, col: number) {
+  selectCell(row: number, col: number) {
     if (this.gameOver) return;
     this.selectedCell = { row, col };
-    this.popupOpen = true;
     this.clearHighlights();
   }
 
-  closePopup() {
-    this.popupOpen = false;
-    this.selectedCell = null;
-    this.showPossibilities = false;
+  isSelected(row: number, col: number): boolean {
+    return this.selectedCell?.row === row && this.selectedCell?.col === col;
+  }
+
+  setNumberMode() {
     this.isNotesMode = false;
+  }
+
+  setNotesMode() {
+    this.isNotesMode = true;
+  }
+
+  isCorrectNumber(num: number): boolean {
+    if (!this.selectedCell) return false;
+    const { row, col } = this.selectedCell;
+    return this.isValidMove(row, col, num);
   }
 
   async loadNewGame() {
@@ -638,6 +991,9 @@ export class AppComponent implements OnInit {
       this.solution = Array(9).fill(null).map(() => Array(9).fill(null));
     }
     this.loading = false;
+    this.gameWon = false;
+    this.lastMoveCorrect = null;
+    this.updateEnemyCount();
   }
 
   convertGrid(grid: number[][]): (number | null)[][] {
@@ -702,26 +1058,62 @@ export class AppComponent implements OnInit {
   selectNumber(n: number | null) {
     if (this.selectedCell) {
       const { row, col } = this.selectedCell;
-      this.board[row][col] = n;
       
       // Clear notes when a number is selected
       const key = `${row}-${col}`;
       this.notes.delete(key);
       
-      if (n !== null && !this.isValidMove(row, col, n)) {
-        this.hearts.pop();
-        this.errorCells.add(`${row}-${col}`);
+      if (n !== null) {
+        // Compare with API solution instead of Sudoku rules
+        const correctNumber = this.solution && this.solution[row] && this.solution[row][col];
         
-        if (this.hearts.length === 0) {
-          this.gameOver = true;
+        if (correctNumber && n !== correctNumber) {
+          // IMMEDIATE REACTION TO FAILURE - Wrong number compared to solution
+          this.lastMoveCorrect = false;
+          this.heroes.pop();
+          this.errorCells.add(`${row}-${col}`);
+          
+          // Place the wrong number to show the error
+          this.board[row][col] = n;
+          
+          // Add shake animation to the cell
+          this.highlightedCells.add(`${row}-${col}`);
+          
+          // Remove the highlight after animation
+          setTimeout(() => {
+            this.highlightedCells.delete(`${row}-${col}`);
+            // Reset move status after showing wrong move image
+            setTimeout(() => {
+              this.lastMoveCorrect = null;
+            }, 2000);
+          }, 1000);
+          
+          if (this.heroes.length === 0) {
+            this.gameOver = true;
+          }
+        } else {
+          // Correct number or no solution available
+          this.lastMoveCorrect = true;
+          this.board[row][col] = n;
+          this.errorCells.delete(`${row}-${col}`);
+          
+          // Update enemy count (defeat an enemy!)
+          this.updateEnemyCount();
+          
+          // Auto-eliminate notes after placing a valid number
+          this.autoEliminateNotesAfterMove(row, col, n);
+          
+          // Reset move status after showing correct move image
+          setTimeout(() => {
+            this.lastMoveCorrect = null;
+          }, 2000);
         }
       } else {
+        // Clear cell
+        this.board[row][col] = null;
         this.errorCells.delete(`${row}-${col}`);
-        // Auto-eliminate notes after placing a number
-        this.autoEliminateNotesAfterMove(row, col, n);
       }
     }
-    this.closePopup();
   }
 
   hasError(row: number, col: number): boolean {
@@ -817,12 +1209,6 @@ export class AppComponent implements OnInit {
 
     // Naked triples elimination
     eliminated = this.eliminateNakedTriples() || eliminated;
-
-    if (eliminated) {
-      this.hintMessage = "Eliminated impossible notes using advanced techniques!";
-    } else {
-      this.hintMessage = "No notes could be eliminated at this time.";
-    }
   }
 
   // Detect and eliminate naked triples
@@ -979,14 +1365,16 @@ export class AppComponent implements OnInit {
   }
 
   restartGame() {
-    this.hearts = Array(3).fill('❤️');
+    this.heroes = Array(3).fill(this.getHeroEmoji());
     this.gameOver = false;
+    this.gameWon = false;
+    this.lastMoveCorrect = null;
+    this.selectedCell = null;
     this.errorCells.clear();
     this.highlightedCells.clear();
     this.showPossibilities = false;
     this.isNotesMode = false;
     this.notes.clear();
-    this.hintMessage = '';
     this.loadNewGame();
   }
 
@@ -997,7 +1385,6 @@ export class AppComponent implements OnInit {
 
     // Only use API solution for hints - no algorithms
     if (!this.solution || this.solution.length === 0) {
-      this.hintMessage = "No solution available. Please start a new game to get hints.";
       return;
     }
 
@@ -1019,17 +1406,20 @@ export class AppComponent implements OnInit {
       // Place the correct number from API solution
       this.board[randomCell.row][randomCell.col] = correctNum;
       this.highlightedCells.add(`${randomCell.row}-${randomCell.col}`);
-      this.hintMessage = `Hint: Placed ${correctNum} at row ${randomCell.row + 1}, column ${randomCell.col + 1}`;
+      this.lastMoveCorrect = true;
       
       // Auto-eliminate notes after hint placement
       this.autoEliminateNotesAfterMove(randomCell.row, randomCell.col, correctNum);
-    } else {
-      this.hintMessage = "Congratulations! The puzzle is complete!";
+      
+      // Update enemy count after hint
+      this.updateEnemyCount();
+      
+      // Reset move status after showing hint
+      setTimeout(() => {
+        this.lastMoveCorrect = null;
+      }, 2000);
     }
   }
 
-  clearHint() {
-    this.hintMessage = '';
-    this.clearHighlights();
-  }
+
 }

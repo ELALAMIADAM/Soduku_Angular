@@ -8,24 +8,22 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
   standalone: true,
   imports: [CommonModule, FormsModule, HttpClientModule],
   template: `
-    <div class="game-container">
+    <div class="game-container" [style.background-image]="'url(' + getBackgroundImage() + ')'">
       <div class="game-header">
         <h1>Sudoku Battle</h1>
         <div class="header-controls">
           <div class="theme-selection">
-            <label>Battle Theme:</label>
-            <select [(ngModel)]="selectedTheme" (change)="onThemeChange()" class="theme-select">
-              <option value="soldiers">Soldiers vs Zombies</option>
-              <option value="samurai">Samurais vs Ninjas</option>
-            </select>
+            <button class="theme-btn" (click)="openThemeModal()">
+              <span>🎨</span> Choose Battle Theme
+            </button>
           </div>
 
           <div class="difficulty-selection">
             <label>Difficulty:</label>
             <select [(ngModel)]="selectedDifficulty" (change)="onDifficultyChange()" class="difficulty-select">
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
             </select>
           </div>
 
@@ -36,9 +34,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
             <button class="control-btn hint" (click)="getHint()">
               <span>💡</span> Hint
             </button>
-            <button class="control-btn eliminate" (click)="autoEliminateNotes()">
-              <span>🧹</span> Auto-Eliminate
-            </button>
+
           </div>
         </div>
       </div>
@@ -104,7 +100,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
             <div class="number-item clear" (click)="selectNumber(null)">Clear</div>
           </div>
 
-          <div class="notes-grid" *ngIf="isNotesMode">
+          <div class="notes-panel" *ngIf="isNotesMode">
             <div class="note-item" *ngFor="let n of numbers" 
                  [class.active]="isNoteActive(n)"
                  (click)="toggleNote(n)">
@@ -115,16 +111,63 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
         </div>
       </div>
 
-      <!-- Game Over Modal -->
-      <div class="modal-backdrop" *ngIf="gameOver" (click)="restartGame()">
-        <div class="modal" (click)="$event.stopPropagation()">
-          <h2>Game Over!</h2>
-          <p>You've run out of hearts. Would you like to try again?</p>
-          <button class="modal-btn" (click)="restartGame()">Play Again</button>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal-backdrop" *ngIf="gameOver" (click)="restartGame()">
+      <div class="modal game-over-modal" (click)="$event.stopPropagation()">
+        <div class="modal-image">
+          <img [src]="getGameOverImage()" alt="Game Over" class="modal-img">
+        </div>
+        <h2>Defeat!</h2>
+        <p>Your army has been defeated! Would you like to try again?</p>
+        <button class="modal-btn" (click)="restartGame()">New Battle</button>
+      </div>
+    </div>
+
+    <!-- Game Won Modal -->
+    <div class="modal-backdrop" *ngIf="gameWon" (click)="restartGame()">
+      <div class="modal game-won-modal" (click)="$event.stopPropagation()">
+        <div class="modal-image">
+          <img [src]="getGameWonImage()" alt="Victory" class="modal-img">
+        </div>
+        <h2>Victory!</h2>
+        <p>Congratulations! You have defeated all enemies!</p>
+        <button class="modal-btn victory" (click)="restartGame()">New Battle</button>
+      </div>
+    </div>
+
+    <!-- Theme Selection Modal -->
+    <div class="modal-backdrop" *ngIf="showThemeModal" (click)="closeThemeModal()">
+      <div class="modal theme-modal" (click)="$event.stopPropagation()">
+        <h2>Choose Your Battle Theme</h2>
+        <div class="theme-options">
+          <div class="theme-option" 
+               [class.selected]="previewTheme === 'soldiers'"
+               (click)="selectPreviewTheme('soldiers')">
+            <div class="theme-preview">
+              <img src="/zombie_battle/zombie_battle_1.jpeg" alt="Soldiers vs Zombies" class="theme-preview-img">
+            </div>
+            <h3>Soldiers vs Zombies</h3>
+            <p>Epic battle between brave soldiers and zombie hordes</p>
+          </div>
+          
+          <div class="theme-option" 
+               [class.selected]="previewTheme === 'samurai'"
+               (click)="selectPreviewTheme('samurai')">
+            <div class="theme-preview">
+              <img src="/ninja_battle/ninja_battle_1.jpeg" alt="Samurais vs Ninjas" class="theme-preview-img">
+            </div>
+            <h3>Samurais vs Ninjas</h3>
+            <p>Ancient warriors clash in legendary combat</p>
+          </div>
+        </div>
+        
+        <div class="theme-modal-buttons">
+          <button class="modal-btn cancel" (click)="closeThemeModal()">Cancel</button>
+          <button class="modal-btn confirm" (click)="confirmThemeSelection()">Confirm Theme</button>
         </div>
       </div>
-
-
     </div>
   `,
   styles: [`
@@ -133,9 +176,30 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       flex-direction: column;
       align-items: center;
       height: 100vh;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      padding: 1rem;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      padding: 0.5rem;
       box-sizing: border-box;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 0;
+    }
+
+    .game-container > * {
+      position: relative;
+      z-index: 1;
     }
 
     .game-board {
@@ -148,13 +212,18 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1rem;
-      margin-bottom: 1rem;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1rem;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
 
     .header-controls {
       display: flex;
-      gap: 2rem;
+      gap: 1rem;
       align-items: center;
       flex-wrap: wrap;
     }
@@ -192,21 +261,46 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-      min-width: 200px;
-      border: 2px solid #e8f4f8;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%);
+      padding: 1.2rem;
+      border-radius: 15px;
+      box-shadow: 
+        0 8px 25px rgba(0,0,0,0.25),
+        inset 0 1px 0 rgba(255,255,255,0.9);
+      min-width: 260px;
+      max-width: 280px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(15px);
+    }
+
+    .battle-status::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, #3498db, #9b59b6, #e74c3c, #f39c12);
+      border-radius: 20px;
+      z-index: -1;
+      margin: -3px;
     }
 
     .battle-title {
-      font-size: 1.1rem;
-      font-weight: bold;
+      font-size: 1rem;
+      font-weight: 700;
       color: #2c3e50;
       text-align: center;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.3rem;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+      background: linear-gradient(45deg, #3498db, #9b59b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.5px;
     }
 
     .heroes-section, .enemies-section {
@@ -214,67 +308,119 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
+      padding: 0.6rem;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
     .section-title {
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: #34495e;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+      background: linear-gradient(45deg, #2c3e50, #34495e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .heroes {
       display: flex;
-      gap: 0.25rem;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: rgba(46, 204, 113, 0.1);
+      border-radius: 12px;
+      border: 2px solid rgba(46, 204, 113, 0.3);
     }
 
     .hero {
       font-size: 1.4rem;
-      animation: heroStand 2s infinite;
-      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+      animation: heroStand 2s infinite ease-in-out;
+      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.4));
+      transition: all 0.3s ease;
+    }
+
+    .hero:hover {
+      transform: scale(1.2) rotate(10deg);
+      filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5));
     }
 
     .battle-image {
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 0.5rem 0;
-      border-top: 1px solid #ecf0f1;
-      border-bottom: 1px solid #ecf0f1;
+      padding: 0.6rem;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 10px;
+      border: 2px solid rgba(52, 152, 219, 0.3);
+      backdrop-filter: blur(5px);
     }
 
     .battle-img {
-      width: 150px;
-      height: 100px;
+      width: 280px;
+      height: 180px;
       object-fit: cover;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      transition: all 0.3s ease;
+      border-radius: 15px;
+      box-shadow: 
+        0 6px 20px rgba(0,0,0,0.4),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+      transition: all 0.4s ease;
+      border: 4px solid rgba(255, 255, 255, 0.9);
     }
 
     .battle-img:hover {
-      transform: scale(1.05);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transform: scale(1.05) rotate(1deg);
+      box-shadow: 
+        0 10px 30px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.4);
+      border-color: #3498db;
     }
 
     .enemies {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 0.8rem;
+      padding: 0.8rem;
+      background: rgba(231, 76, 60, 0.1);
+      border-radius: 12px;
+      border: 2px solid rgba(231, 76, 60, 0.3);
     }
 
     .enemy-count {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #2c3e50;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #e74c3c;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+      background: linear-gradient(45deg, #e74c3c, #c0392b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: enemyPulse 1.5s infinite ease-in-out;
     }
 
     @keyframes heroStand {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-2px); }
+      0%, 100% { 
+        transform: translateY(0px) scale(1); 
+      }
+      50% { 
+        transform: translateY(-4px) scale(1.05); 
+      }
+    }
+
+    @keyframes enemyPulse {
+      0%, 100% { 
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% { 
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
     }
 
     .theme-selection {
@@ -283,27 +429,29 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       gap: 0.5rem;
     }
 
-    .theme-selection label {
-      color: #2c3e50;
+    .theme-btn {
+      padding: 0.5rem 1rem;
+      border: 2px solid #9b59b6;
+      border-radius: 8px;
+      background: linear-gradient(45deg, #9b59b6, #8e44ad);
+      color: white;
       font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    .theme-select {
-      padding: 0.4rem 0.6rem;
-      border: 2px solid #bdc3c7;
-      border-radius: 6px;
-      background: white;
-      color: #2c3e50;
-      font-weight: 500;
       cursor: pointer;
       transition: all 0.2s ease;
       font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
-    .theme-select:hover, .theme-select:focus {
-      border-color: #3498db;
-      outline: none;
+    .theme-btn:hover {
+      background: linear-gradient(45deg, #8e44ad, #9b59b6);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+    }
+
+    .theme-btn span {
+      font-size: 1rem;
     }
 
     .controls {
@@ -338,10 +486,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       color: white;
     }
 
-    .eliminate {
-      background: #9b59b6;
-      color: white;
-    }
+
 
     .control-btn:hover {
       transform: translateY(-2px);
@@ -350,7 +495,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
 
     h1 {
       color: #2c3e50;
-      font-size: 1.8rem;
+      font-size: 1.4rem;
       margin: 0;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -362,11 +507,12 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       gap: 1px;
       background-color: #34495e;
       padding: 2px;
-      border: 2px solid #2c3e50;
-      border-radius: 4px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border: 3px solid #2c3e50;
+      border-radius: 8px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
       width: 360px;
       position: relative;
+      backdrop-filter: blur(5px);
     }
 
     .loading-overlay {
@@ -677,11 +823,13 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
           }
 
       .number-panel {
-        background: white;
-        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
         padding: 1rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
         width: 200px;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.3);
       }
 
       .panel-header {
@@ -712,7 +860,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
         transform: translateY(-1px);
       }
 
-      .number-grid, .notes-grid {
+      .number-grid, .notes-panel {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 0.5rem;
@@ -766,44 +914,268 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       }
   
       .modal-backdrop {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
+      position: fixed !important;
+      top: 0 !important; 
+      left: 0 !important; 
+      right: 0 !important; 
+      bottom: 0 !important;
+      background: rgba(0,0,0,0.85) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 999999 !important;
+      backdrop-filter: blur(8px) !important;
+      pointer-events: auto !important;
     }
 
     .modal {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 12px;
-      text-align: center;
-      max-width: 300px;
-      animation: modalFadeIn 0.3s ease;
+      background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%) !important;
+      padding: 2rem !important;
+      border-radius: 20px !important;
+      text-align: center !important;
+      max-width: 400px !important;
+      animation: modalFadeIn 0.3s ease !important;
+      box-shadow: 
+        0 25px 80px rgba(0,0,0,0.6) !important,
+        inset 0 1px 0 rgba(255,255,255,0.8) !important;
+      border: 4px solid rgba(255,255,255,0.9) !important;
+      background-clip: padding-box !important;
+      position: relative !important;
+      overflow: hidden !important;
+      z-index: 1000000 !important;
+      pointer-events: auto !important;
     }
 
-    .modal h2 {
+    .modal::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, #3498db, #9b59b6, #e74c3c, #f39c12);
+      border-radius: 20px;
+      z-index: -1;
+      margin: -3px;
+    }
+
+    .modal-image {
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-img {
+      width: 300px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 15px;
+      box-shadow: 
+        0 8px 24px rgba(0,0,0,0.4),
+        inset 0 1px 0 rgba(255,255,255,0.2);
+      border: 3px solid rgba(255, 255, 255, 0.8);
+      animation: modalImagePulse 2s infinite ease-in-out;
+    }
+
+    .game-over-modal {
+      z-index: 1000002 !important;
+    }
+
+    .game-won-modal {
+      z-index: 1000002 !important;
+    }
+
+    .game-over-modal h2 {
       color: #e74c3c;
       margin-bottom: 1rem;
+      font-size: 2rem;
+      font-weight: 800;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      background: linear-gradient(45deg, #e74c3c, #c0392b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .game-won-modal h2 {
+      color: #2ecc71;
+      margin-bottom: 1rem;
+      font-size: 2rem;
+      font-weight: 800;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      background: linear-gradient(45deg, #2ecc71, #27ae60);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .modal p {
+      font-size: 1.1rem;
+      color: #2c3e50;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
     }
 
     .modal-btn {
-      background: #3498db;
+      background: linear-gradient(45deg, #3498db, #2980b9);
       color: white;
       border: none;
-      padding: 0.75rem 2rem;
-      border-radius: 8px;
-      font-size: 1.1rem;
+      padding: 1rem 2.5rem;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
       cursor: pointer;
       margin-top: 1rem;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .modal-btn:hover {
-      background: #2980b9;
-      transform: translateY(-2px);
+      background: linear-gradient(45deg, #2980b9, #3498db);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+    }
+
+    .modal-btn.victory {
+      background: linear-gradient(45deg, #2ecc71, #27ae60);
+      box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+    }
+
+    .modal-btn.victory:hover {
+      background: linear-gradient(45deg, #27ae60, #2ecc71);
+      box-shadow: 0 6px 20px rgba(46, 204, 113, 0.6);
+    }
+
+    @keyframes modalImagePulse {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow: 
+          0 8px 24px rgba(0,0,0,0.4),
+          inset 0 1px 0 rgba(255,255,255,0.2);
+      }
+      50% { 
+        transform: scale(1.02);
+        box-shadow: 
+          0 12px 32px rgba(0,0,0,0.5),
+          inset 0 1px 0 rgba(255,255,255,0.3);
+      }
+    }
+
+    .theme-modal {
+      max-width: 600px !important;
+      width: 90vw !important;
+      z-index: 1000001 !important;
+    }
+
+    .theme-modal h2 {
+      color: #2c3e50 !important;
+      margin-bottom: 2rem !important;
+      font-size: 1.8rem !important;
+      font-weight: 800 !important;
+      text-align: center !important;
+      background: linear-gradient(45deg, #9b59b6, #3498db) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+
+    .theme-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .theme-option {
+      background: rgba(255, 255, 255, 0.8);
+      border: 3px solid transparent;
+      border-radius: 15px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .theme-option:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+
+    .theme-option.selected {
+      border-color: #3498db;
+      background: rgba(52, 152, 219, 0.1);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
+    }
+
+    .theme-preview {
+      margin-bottom: 1rem;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .theme-preview-img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      transition: all 0.3s ease;
+    }
+
+    .theme-option:hover .theme-preview-img {
+      transform: scale(1.05);
+    }
+
+    .theme-option h3 {
+      color: #2c3e50;
+      margin: 1rem 0 0.5rem 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .theme-option p {
+      color: #7f8c8d;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    .theme-option.selected h3 {
+      color: #3498db;
+    }
+
+    .theme-option.selected p {
+      color: #2980b9;
+    }
+
+    .theme-modal-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .modal-btn.cancel {
+      background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+      box-shadow: 0 4px 15px rgba(149, 165, 166, 0.4);
+    }
+
+    .modal-btn.cancel:hover {
+      background: linear-gradient(45deg, #7f8c8d, #95a5a6);
+      box-shadow: 0 6px 20px rgba(149, 165, 166, 0.6);
+    }
+
+    .modal-btn.confirm {
+      background: linear-gradient(45deg, #9b59b6, #8e44ad);
+      box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+    }
+
+    .modal-btn.confirm:hover {
+      background: linear-gradient(45deg, #8e44ad, #9b59b6);
+      box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
     }
 
     @keyframes popupFadeIn {
@@ -841,7 +1213,7 @@ export class AppComponent implements OnInit {
   showPossibilities = false;
   isNotesMode = false;
   notes: Map<string, Set<number>> = new Map();
-  selectedDifficulty = 'medium';
+  selectedDifficulty = 'Medium';
   selectedTheme = 'soldiers';
   loading = false;
   enemyCount = 0;
@@ -850,10 +1222,21 @@ export class AppComponent implements OnInit {
   lastMoveCorrect: boolean | null = null;
   gameWon = false;
 
+  // Theme selection
+  showThemeModal = false;
+  previewTheme = 'soldiers';
+
+  // Audio elements
+  private winAudio: HTMLAudioElement | null = null;
+  private loseAudio: HTMLAudioElement | null = null;
+  private correctMoveAudio: HTMLAudioElement | null = null;
+  private wrongMoveAudio: HTMLAudioElement | null = null;
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
     this.loadNewGame();
+    this.initializeAudio();
   }
 
   getHeroEmoji(): string {
@@ -867,16 +1250,6 @@ export class AppComponent implements OnInit {
   getBattleImage(): string {
     if (this.selectedTheme === 'samurai') {
       // Ninja battle images for samurai vs ninja theme
-      // Game lost
-      if (this.gameOver) {
-        return '/ninja_battle/ninja_battle_6.jpeg';
-      }
-
-      // Game won
-      if (this.gameWon) {
-        return '/ninja_battle/ninja_battle_5.jpeg';
-      }
-
       // Last move was wrong
       if (this.lastMoveCorrect === false) {
         return '/ninja_battle/ninja_battle_4.jpeg';
@@ -896,16 +1269,6 @@ export class AppComponent implements OnInit {
       return '/ninja_battle/ninja_battle_1.jpeg';
     } else {
       // Zombie battle images for soldiers theme
-      // Game lost
-      if (this.gameOver) {
-        return '/zombie_battle/zombie_battle_6.jpeg';
-      }
-
-      // Game won
-      if (this.gameWon) {
-        return '/zombie_battle/zombie_battle_5.jpeg';
-      }
-
       // Last move was wrong
       if (this.lastMoveCorrect === false) {
         return '/zombie_battle/zombie_battle_4.jpeg';
@@ -926,9 +1289,146 @@ export class AppComponent implements OnInit {
     }
   }
 
+  getGameOverImage(): string {
+    return this.selectedTheme === 'samurai' 
+      ? '/ninja_battle/ninja_battle_6.jpeg'
+      : '/zombie_battle/zombie_battle_6.jpeg';
+  }
+
+  getGameWonImage(): string {
+    return this.selectedTheme === 'samurai' 
+      ? '/ninja_battle/ninja_battle_5.jpeg'
+      : '/zombie_battle/zombie_battle_5.jpeg';
+  }
+
+  getBackgroundImage(): string {
+    return this.selectedTheme === 'samurai' 
+      ? '/ninja_battle/bacground.jpeg'
+      : '/zombie_battle/background.jpeg';
+  }
+
+  initializeAudio() {
+    this.loadAudioFiles();
+  }
+
+  loadAudioFiles() {
+    try {
+      // Check if Audio is available (browser environment)
+      if (typeof Audio !== 'undefined') {
+        if (this.selectedTheme === 'samurai') {
+          this.winAudio = new Audio('/ninja_battle/ninja_victory.mp3');
+          this.loseAudio = new Audio('/ninja_battle/ninja_defeat.mp3');
+          this.correctMoveAudio = new Audio('/ninja_battle/one_soldier_wont.mp3');
+          this.wrongMoveAudio = new Audio('/ninja_battle/one_zombie_won.mp3');
+        } else {
+          this.winAudio = new Audio('/zombie_battle/zombie_defeat.mp3');
+          this.loseAudio = new Audio('/zombie_battle/zombie_victory.mp3');
+          this.correctMoveAudio = new Audio('/zombie_battle/one_soldier_won.mp3');
+          this.wrongMoveAudio = new Audio('/zombie_battle/one_zombie_won.mp3');
+        }
+
+        // Preload audio files
+        const audioFiles = [this.winAudio, this.loseAudio, this.correctMoveAudio, this.wrongMoveAudio];
+        audioFiles.forEach(audio => {
+          if (audio) {
+            audio.preload = 'auto';
+            audio.volume = 0.7;
+          }
+        });
+      } else {
+        console.warn('Audio not available in this environment');
+      }
+    } catch (error) {
+      console.warn('Audio files could not be loaded:', error);
+    }
+  }
+
+  stopAllAudio() {
+    try {
+      const audioFiles = [this.winAudio, this.loseAudio, this.correctMoveAudio, this.wrongMoveAudio];
+      audioFiles.forEach(audio => {
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+        }
+      });
+    } catch (error) {
+      console.warn('Error stopping audio:', error);
+    }
+  }
+
+  playWinSound() {
+    try {
+      this.stopAllAudio(); // Stop any currently playing audio
+      if (this.winAudio) {
+        this.winAudio.currentTime = 0; // Reset to beginning
+        this.winAudio.play().catch(e => console.warn('Could not play win sound:', e));
+      }
+    } catch (error) {
+      console.warn('Error playing win sound:', error);
+    }
+  }
+
+  playLoseSound() {
+    try {
+      this.stopAllAudio(); // Stop any currently playing audio
+      if (this.loseAudio) {
+        this.loseAudio.currentTime = 0; // Reset to beginning
+        this.loseAudio.play().catch(e => console.warn('Could not play lose sound:', e));
+      }
+    } catch (error) {
+      console.warn('Error playing lose sound:', error);
+    }
+  }
+
+  playCorrectMoveSound() {
+    try {
+      this.stopAllAudio(); // Stop any currently playing audio
+      if (this.correctMoveAudio) {
+        this.correctMoveAudio.currentTime = 0; // Reset to beginning
+        this.correctMoveAudio.play().catch(e => console.warn('Could not play correct move sound:', e));
+      }
+    } catch (error) {
+      console.warn('Error playing correct move sound:', error);
+    }
+  }
+
+  playWrongMoveSound() {
+    try {
+      this.stopAllAudio(); // Stop any currently playing audio
+      if (this.wrongMoveAudio) {
+        this.wrongMoveAudio.currentTime = 0; // Reset to beginning
+        this.wrongMoveAudio.play().catch(e => console.warn('Could not play wrong move sound:', e));
+      }
+    } catch (error) {
+      console.warn('Error playing wrong move sound:', error);
+    }
+  }
+
   onThemeChange() {
     // Update heroes based on theme
     this.heroes = Array(3).fill(this.getHeroEmoji());
+    // Reload audio files for new theme
+    this.loadAudioFiles();
+  }
+
+  openThemeModal() {
+    this.previewTheme = this.selectedTheme; // Set preview to current theme
+    this.showThemeModal = true;
+  }
+
+  closeThemeModal() {
+    this.showThemeModal = false;
+  }
+
+  selectPreviewTheme(theme: string) {
+    this.previewTheme = theme;
+  }
+
+  confirmThemeSelection() {
+    this.selectedTheme = this.previewTheme;
+    this.showThemeModal = false;
+    this.onThemeChange(); // Apply the theme changes
   }
 
   updateEnemyCount() {
@@ -944,6 +1444,7 @@ export class AppComponent implements OnInit {
     // Check if game is won
     if (this.enemyCount === 0) {
       this.gameWon = true;
+      this.playWinSound();
     }
   }
 
@@ -977,23 +1478,68 @@ export class AppComponent implements OnInit {
 
   async loadNewGame() {
     this.loading = true;
-    try {
-      const response = await this.http.get<any>(`https://sudoku-api.vercel.app/api/dosuku?query={newboard(limit:1){grids{value,solution,difficulty}}}`).toPromise();
-      
-      if (response && response.newboard && response.newboard.grids && response.newboard.grids.length > 0) {
-        const grid = response.newboard.grids[0];
-        this.board = this.convertGrid(grid.value);
-        this.solution = this.convertGrid(grid.solution);
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const response = await this.http.get<any>(`https://sudoku-api.vercel.app/api/dosuku?query={newboard(limit:1){grids{value,solution,difficulty}}}`).toPromise();
+        
+        if (response && response.newboard && response.newboard.grids && response.newboard.grids.length > 0) {
+          const grid = response.newboard.grids[0];
+          const testBoard = this.convertGrid(grid.value);
+          const emptyCells = this.countEmptyCells(testBoard);
+          
+          // Check if the puzzle matches our difficulty requirements
+          if (this.isCorrectDifficulty(emptyCells)) {
+            this.board = testBoard;
+            this.solution = this.convertGrid(grid.solution);
+            break;
+          }
+        }
+        attempts++;
+      } catch (error) {
+        console.error('Failed to load puzzle from API, attempt', attempts + 1, error);
+        attempts++;
       }
-    } catch (error) {
-      console.error('Failed to load puzzle from API, using empty board', error);
+    }
+    
+    // If we couldn't find a suitable puzzle, use the last one we got
+    if (attempts >= maxAttempts && (!this.board || this.board.every(row => row.every(cell => cell === null)))) {
+      console.warn('Could not find puzzle matching difficulty requirements, using fallback');
       this.board = Array(9).fill(null).map(() => Array(9).fill(null));
       this.solution = Array(9).fill(null).map(() => Array(9).fill(null));
     }
+    
     this.loading = false;
     this.gameWon = false;
     this.lastMoveCorrect = null;
     this.updateEnemyCount();
+  }
+
+  countEmptyCells(board: (number | null)[][]): number {
+    let count = 0;
+    for (let i = 0; i < 9; i++) {
+      for (let j = 0; j < 9; j++) {
+        if (board[i][j] === null) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  isCorrectDifficulty(emptyCells: number): boolean {
+    switch (this.selectedDifficulty) {
+      case 'Easy':
+        return emptyCells >= 36 && emptyCells <= 41;
+      case 'Medium':
+        return emptyCells >= 42 && emptyCells <= 49;
+      case 'Hard':
+        return emptyCells >= 50 && emptyCells <= 58;
+      default:
+        return true;
+    }
   }
 
   convertGrid(grid: number[][]): (number | null)[][] {
@@ -1073,6 +1619,11 @@ export class AppComponent implements OnInit {
           this.heroes.pop();
           this.errorCells.add(`${row}-${col}`);
           
+          // Play wrong move sound only for first 2 mistakes (when heroes.length > 0)
+          if (this.heroes.length > 0) {
+            this.playWrongMoveSound();
+          }
+          
           // Place the wrong number to show the error
           this.board[row][col] = n;
           
@@ -1090,12 +1641,17 @@ export class AppComponent implements OnInit {
           
           if (this.heroes.length === 0) {
             this.gameOver = true;
+            // Only play defeat sound on 3rd mistake (game over)
+            this.playLoseSound();
           }
         } else {
           // Correct number or no solution available
           this.lastMoveCorrect = true;
           this.board[row][col] = n;
           this.errorCells.delete(`${row}-${col}`);
+          
+          // Play correct move sound
+          this.playCorrectMoveSound();
           
           // Update enemy count (defeat an enemy!)
           this.updateEnemyCount();
@@ -1365,6 +1921,7 @@ export class AppComponent implements OnInit {
   }
 
   restartGame() {
+    this.stopAllAudio(); // Stop any currently playing audio
     this.heroes = Array(3).fill(this.getHeroEmoji());
     this.gameOver = false;
     this.gameWon = false;

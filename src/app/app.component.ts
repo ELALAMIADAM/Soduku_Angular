@@ -71,6 +71,9 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
                  [class.error]="hasError(i, j)"
                  [class.highlighted]="isHighlighted(i, j)"
                  [class.selected]="isSelected(i, j)"
+                 [class.original]="isOriginalCell(i, j)"
+                 [class.correct]="isCorrectlyPlaced(i, j)"
+                 [class.number-highlight]="shouldHighlightNumber(i, j)"
                  (click)="selectCell(i, j)">
               <span class="cell-value">{{ cell || '' }}</span>
               <div class="notes-grid" *ngIf="!cell && getNotes(i, j).length > 0">
@@ -92,17 +95,19 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
           
           <div class="number-grid" *ngIf="!isNotesMode">
             <div class="number-item" *ngFor="let num of numbers" 
-                 [class.valid]="isCorrectNumber(num)"
-                 [class.invalid]="!isCorrectNumber(num)"
                  (click)="selectNumber(num)">
               {{ num }}
             </div>
-            <div class="number-item clear" (click)="selectNumber(null)">Clear</div>
+            <div class="number-item clear" 
+                 [class.disabled]="selectedCell && !isCellEditable(selectedCell.row, selectedCell.col)"
+                 (click)="clearSelectedCell()">Clear</div>
           </div>
 
           <div class="notes-panel" *ngIf="isNotesMode">
             <div class="note-item" *ngFor="let n of numbers" 
                  [class.active]="isNoteActive(n)"
+                 [class.valid]="isValidNoteNumber(n)"
+                 [class.invalid]="!isValidNoteNumber(n)"
                  (click)="toggleNote(n)">
               {{ n }}
             </div>
@@ -588,19 +593,11 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(52, 152, 219, 0.1);
-      border: 1px solid rgba(52, 152, 219, 0.3);
-      border-radius: 3px;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #2980b9;
+      font-size: 0.6rem;
+      font-weight: 500;
+      color: #000;
       min-height: 8px;
       transition: all 0.2s ease;
-    }
-
-    .note:hover {
-      background: rgba(52, 152, 219, 0.2);
-      border-color: rgba(52, 152, 219, 0.5);
     }
 
     .cell.error {
@@ -629,6 +626,25 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       background: #d4edda;
       border-color: #28a745;
       box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+    }
+
+    .cell.original {
+      background: #f8f9fa;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    .cell.correct {
+      background: #e8f5e8;
+      color: #2c3e50;
+      font-weight: 600;
+    }
+
+    .cell.number-highlight {
+      background: #fff3cd !important;
+      border-color: #f39c12 !important;
+      font-weight: 700;
+      color: #d68910;
     }
 
     .thick-right {
@@ -905,12 +921,44 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
         border-color: #2980b9;
       }
 
+      .note-item.valid {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+      }
+
+      .note-item.invalid {
+        background: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      .note-item.invalid:hover {
+        transform: none;
+        box-shadow: none;
+      }
+
       .number-item.clear, .note-item.clear {
         grid-column: span 3;
         background: #fff3cd;
         border-color: #ffeaa7;
         color: #856404;
         height: 40px;
+      }
+
+      .number-item.clear.disabled {
+        background: #f8f9fa;
+        border-color: #e9ecef;
+        color: #6c757d;
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .number-item.clear.disabled:hover {
+        transform: none;
+        box-shadow: none;
       }
   
       .modal-backdrop {
@@ -1205,6 +1253,7 @@ export class AppComponent implements OnInit {
   title = 'sudoku-angular';
   board: (number | null)[][] = Array(9).fill(null).map(() => Array(9).fill(null));
   solution: (number | null)[][] = Array(9).fill(null).map(() => Array(9).fill(null));
+  originalBoard: (number | null)[][] = Array(9).fill(null).map(() => Array(9).fill(null));
   numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   heroes = Array(3).fill('🪖');
   gameOver = false;
@@ -1217,6 +1266,7 @@ export class AppComponent implements OnInit {
   selectedTheme = 'soldiers';
   loading = false;
   enemyCount = 0;
+  highlightedNumber: number | null = null;
 
   selectedCell: { row: number, col: number } | null = null;
   lastMoveCorrect: boolean | null = null;
@@ -1454,7 +1504,16 @@ export class AppComponent implements OnInit {
 
   selectCell(row: number, col: number) {
     if (this.gameOver) return;
-    this.selectedCell = { row, col };
+    
+    // If cell is not editable, highlight all instances of its number
+    if (!this.isCellEditable(row, col) && this.board[row][col] !== null) {
+      this.highlightedNumber = this.board[row][col];
+      this.selectedCell = null; // Don't select non-editable cells
+    } else {
+      this.selectedCell = { row, col };
+      this.highlightedNumber = null; // Clear number highlighting when selecting editable cell
+    }
+    
     this.clearHighlights();
   }
 
@@ -1476,6 +1535,33 @@ export class AppComponent implements OnInit {
     return this.isValidMove(row, col, num);
   }
 
+  isOriginalCell(row: number, col: number): boolean {
+    return this.originalBoard[row] && this.originalBoard[row][col] !== null;
+  }
+
+  isCorrectlyPlaced(row: number, col: number): boolean {
+    const currentValue = this.board[row][col];
+    const correctValue = this.solution[row] && this.solution[row][col];
+    return currentValue !== null && currentValue === correctValue;
+  }
+
+  isCellEditable(row: number, col: number): boolean {
+    return !this.isOriginalCell(row, col) && !this.isCorrectlyPlaced(row, col);
+  }
+
+  isValidNoteNumber(num: number): boolean {
+    if (!this.selectedCell) return false;
+    const { row, col } = this.selectedCell;
+    // Only show valid/invalid for editable cells
+    if (!this.isCellEditable(row, col)) return false;
+    return this.isValidMove(row, col, num);
+  }
+
+  shouldHighlightNumber(row: number, col: number): boolean {
+    const cellValue = this.board[row][col];
+    return this.highlightedNumber !== null && cellValue === this.highlightedNumber;
+  }
+
   async loadNewGame() {
     this.loading = true;
     let attempts = 0;
@@ -1493,6 +1579,7 @@ export class AppComponent implements OnInit {
           // Check if the puzzle matches our difficulty requirements
           if (this.isCorrectDifficulty(emptyCells)) {
             this.board = testBoard;
+            this.originalBoard = JSON.parse(JSON.stringify(testBoard)); // Deep copy
             this.solution = this.convertGrid(grid.solution);
             break;
           }
@@ -1508,12 +1595,14 @@ export class AppComponent implements OnInit {
     if (attempts >= maxAttempts && (!this.board || this.board.every(row => row.every(cell => cell === null)))) {
       console.warn('Could not find puzzle matching difficulty requirements, using fallback');
       this.board = Array(9).fill(null).map(() => Array(9).fill(null));
+      this.originalBoard = Array(9).fill(null).map(() => Array(9).fill(null));
       this.solution = Array(9).fill(null).map(() => Array(9).fill(null));
     }
     
     this.loading = false;
     this.gameWon = false;
     this.lastMoveCorrect = null;
+    this.highlightedNumber = null;
     this.updateEnemyCount();
   }
 
@@ -1568,7 +1657,12 @@ export class AppComponent implements OnInit {
 
   toggleNote(num: number) {
     if (!this.selectedCell) return;
-    const key = `${this.selectedCell.row}-${this.selectedCell.col}`;
+    const { row, col } = this.selectedCell;
+    
+    // Don't allow notes on non-editable cells
+    if (!this.isCellEditable(row, col)) return;
+    
+    const key = `${row}-${col}`;
     
     if (!this.notes.has(key)) {
       this.notes.set(key, new Set());
@@ -1591,6 +1685,16 @@ export class AppComponent implements OnInit {
     this.notes.delete(key);
   }
 
+  clearSelectedCell() {
+    if (!this.selectedCell) return;
+    const { row, col } = this.selectedCell;
+    
+    // Only clear if the cell is editable
+    if (this.isCellEditable(row, col)) {
+      this.selectNumber(null);
+    }
+  }
+
   getPossibilities(row: number, col: number): number[] {
     const possibilities: number[] = [];
     for (let num = 1; num <= 9; num++) {
@@ -1604,6 +1708,11 @@ export class AppComponent implements OnInit {
   selectNumber(n: number | null) {
     if (this.selectedCell) {
       const { row, col } = this.selectedCell;
+      
+      // Don't allow changes to non-editable cells
+      if (!this.isCellEditable(row, col)) {
+        return;
+      }
       
       // Clear notes when a number is selected
       const key = `${row}-${col}`;
@@ -1665,9 +1774,11 @@ export class AppComponent implements OnInit {
           }, 2000);
         }
       } else {
-        // Clear cell
-        this.board[row][col] = null;
-        this.errorCells.delete(`${row}-${col}`);
+        // Clear cell only if it's editable
+        if (this.isCellEditable(row, col)) {
+          this.board[row][col] = null;
+          this.errorCells.delete(`${row}-${col}`);
+        }
       }
     }
   }
@@ -1932,6 +2043,7 @@ export class AppComponent implements OnInit {
     this.showPossibilities = false;
     this.isNotesMode = false;
     this.notes.clear();
+    this.highlightedNumber = null;
     this.loadNewGame();
   }
 

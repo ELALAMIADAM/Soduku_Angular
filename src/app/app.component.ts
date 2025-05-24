@@ -10,7 +10,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
   template: `
     <div class="game-container" [style.background-image]="'url(' + getBackgroundImage() + ')'">
       <div class="game-header">
-        <h1>Sudoku Battle</h1>
+        <!-- <h1>Sudoku Battle</h1> -->
         <div class="header-controls">
           <div class="theme-selection">
             <button class="theme-btn" (click)="openThemeModal()">
@@ -43,18 +43,23 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
         <div class="battle-status">
           <div class="battle-title">Battle Status</div>
           <div class="heroes-section">
-            <div class="section-title">Your Army</div>
+            <div class="section-title">
+               Your Army
+            </div>
             <div class="heroes">
-              <span *ngFor="let hero of heroes" class="hero">{{ getHeroEmoji() }}</span>
+              <span *ngFor="let hero of heroes" class="hero"><img src="/zombie_battle/army_icon.png" alt="Army" class="army-icon-img"></span>
             </div>
           </div>
           <div class="battle-image">
             <img [src]="getBattleImage()" alt="Battle Scene" class="battle-img">
           </div>
           <div class="enemies-section">
-            <div class="section-title">Enemies</div>
+            <div class="section-title">
+              <span class="enemy-icon">⚠️</span> Enemies <span class="enemy-icon">💀</span>
+            </div>
             <div class="enemies">
-              <span class="enemy-count">{{ getEnemyEmoji() }} × {{ enemyCount }}</span>
+              <span class="enemy-emoji">{{ getEnemyEmoji() }}</span>
+              <span class="enemy-count">× {{ enemyCount }}</span>
             </div>
           </div>
         </div>
@@ -331,6 +336,47 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      justify-content: center;
+    }
+
+    .army-icon-img {
+      width: 20px;
+      height: 20px;
+      margin-right: 0.5rem;
+      animation: armyGlow 2s ease-in-out infinite alternate;
+      filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+      transition: all 0.3s ease;
+    }
+
+    .enemy-icon {
+      font-size: 1rem;
+      animation: enemyThreat 1.5s ease-in-out infinite alternate;
+      filter: drop-shadow(1px 1px 2px rgba(231, 76, 60, 0.3));
+    }
+
+    @keyframes enemyThreat {
+      0% { 
+        transform: scale(1);
+        filter: drop-shadow(1px 1px 2px rgba(231, 76, 60, 0.3));
+      }
+      100% { 
+        transform: scale(1.15);
+        filter: drop-shadow(2px 2px 4px rgba(231, 76, 60, 0.6));
+      }
+    }
+
+    @keyframes armyGlow {
+      0% { 
+        transform: scale(1);
+        filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+      }
+      100% { 
+        transform: scale(1.1);
+        filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.4));
+      }
     }
 
     .heroes {
@@ -394,6 +440,18 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
       background: rgba(231, 76, 60, 0.1);
       border-radius: 12px;
       border: 2px solid rgba(231, 76, 60, 0.3);
+    }
+
+    .enemy-emoji {
+      font-size: 1.4rem;
+      animation: enemyPulse 1.5s infinite ease-in-out;
+      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.4));
+      transition: all 0.3s ease;
+    }
+
+    .enemy-emoji:hover {
+      transform: scale(1.2) rotate(-10deg);
+      filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5));
     }
 
     .enemy-count {
@@ -1179,7 +1237,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
     }
 
     .theme-option h3 {
-      color: #2c3e50;
+      color:rgb(251, 251, 251);
       margin: 1rem 0 0.5rem 0;
       font-size: 1.2rem;
       font-weight: 700;
@@ -1281,12 +1339,28 @@ export class AppComponent implements OnInit {
   private loseAudio: HTMLAudioElement | null = null;
   private correctMoveAudio: HTMLAudioElement | null = null;
   private wrongMoveAudio: HTMLAudioElement | null = null;
+  private backgroundMusic: HTMLAudioElement | null = null;
 
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
-    this.loadNewGame();
     this.initializeAudio();
+    
+    // Start background music immediately after audio initialization
+    setTimeout(() => {
+      this.playBackgroundMusic();
+    }, 500);
+    
+    // Load the game immediately and ensure it loads properly
+    this.loadNewGame();
+    
+    // Also ensure we have a fallback in case the first call fails
+    setTimeout(() => {
+      if (this.board.every(row => row.every(cell => cell === null))) {
+        console.log('First load failed, retrying...');
+        this.loadNewGame();
+      }
+    }, 2000);
   }
 
   getHeroEmoji(): string {
@@ -1370,11 +1444,13 @@ export class AppComponent implements OnInit {
           this.loseAudio = new Audio('/ninja_battle/ninja_defeat.mp3');
           this.correctMoveAudio = new Audio('/ninja_battle/one_soldier_wont.mp3');
           this.wrongMoveAudio = new Audio('/ninja_battle/one_zombie_won.mp3');
+          this.backgroundMusic = new Audio('/ninja_battle/ninja_theme.mp3');
         } else {
           this.winAudio = new Audio('/zombie_battle/zombie_defeat.mp3');
           this.loseAudio = new Audio('/zombie_battle/zombie_victory.mp3');
           this.correctMoveAudio = new Audio('/zombie_battle/one_soldier_won.mp3');
           this.wrongMoveAudio = new Audio('/zombie_battle/one_zombie_won.mp3');
+          this.backgroundMusic = new Audio('/zombie_battle/zombie_theme.mp3');
         }
 
         // Preload audio files
@@ -1385,6 +1461,13 @@ export class AppComponent implements OnInit {
             audio.volume = 0.7;
           }
         });
+
+        // Setup background music
+        if (this.backgroundMusic) {
+          this.backgroundMusic.preload = 'auto';
+          this.backgroundMusic.volume = 0.3; // Lower volume for background music
+          this.backgroundMusic.loop = true; // Loop the background music
+        }
       } else {
         console.warn('Audio not available in this environment');
       }
@@ -1407,12 +1490,61 @@ export class AppComponent implements OnInit {
     }
   }
 
+  playBackgroundMusic() {
+    try {
+      if (this.backgroundMusic) {
+        this.backgroundMusic.loop = true; // Ensure looping is enabled
+        this.backgroundMusic.currentTime = 0;
+        this.backgroundMusic.play().catch(e => console.warn('Could not play background music:', e));
+      }
+    } catch (error) {
+      console.warn('Error playing background music:', error);
+    }
+  }
+
+  stopBackgroundMusic() {
+    try {
+      if (this.backgroundMusic) {
+        this.backgroundMusic.pause();
+        this.backgroundMusic.currentTime = 0;
+      }
+    } catch (error) {
+      console.warn('Error stopping background music:', error);
+    }
+  }
+
+  pauseBackgroundMusic() {
+    try {
+      if (this.backgroundMusic && !this.backgroundMusic.paused) {
+        this.backgroundMusic.pause();
+      }
+    } catch (error) {
+      console.warn('Error pausing background music:', error);
+    }
+  }
+
+  resumeBackgroundMusic() {
+    try {
+      if (this.backgroundMusic && this.backgroundMusic.paused) {
+        this.backgroundMusic.loop = true; // Ensure looping is enabled when resuming
+        this.backgroundMusic.play().catch(e => console.warn('Could not resume background music:', e));
+      }
+    } catch (error) {
+      console.warn('Error resuming background music:', error);
+    }
+  }
+
   playWinSound() {
     try {
       this.stopAllAudio(); // Stop any currently playing audio
+      this.pauseBackgroundMusic(); // Pause background music during win sound
       if (this.winAudio) {
         this.winAudio.currentTime = 0; // Reset to beginning
         this.winAudio.play().catch(e => console.warn('Could not play win sound:', e));
+        // Resume background music after win sound finishes
+        this.winAudio.onended = () => {
+          setTimeout(() => this.resumeBackgroundMusic(), 500);
+        };
       }
     } catch (error) {
       console.warn('Error playing win sound:', error);
@@ -1422,6 +1554,7 @@ export class AppComponent implements OnInit {
   playLoseSound() {
     try {
       this.stopAllAudio(); // Stop any currently playing audio
+      this.stopBackgroundMusic(); // Stop background music completely on game over
       if (this.loseAudio) {
         this.loseAudio.currentTime = 0; // Reset to beginning
         this.loseAudio.play().catch(e => console.warn('Could not play lose sound:', e));
@@ -1456,10 +1589,19 @@ export class AppComponent implements OnInit {
   }
 
   onThemeChange() {
+    // Stop current background music
+    this.stopBackgroundMusic();
+    
     // Update heroes based on theme
     this.heroes = Array(3).fill(this.getHeroEmoji());
+    
     // Reload audio files for new theme
     this.loadAudioFiles();
+    
+    // Start new theme background music immediately
+    setTimeout(() => {
+      this.playBackgroundMusic();
+    }, 200);
   }
 
   openThemeModal() {
@@ -1564,11 +1706,15 @@ export class AppComponent implements OnInit {
 
   async loadNewGame() {
     this.loading = true;
+    console.log('Loading new game...');
+    
     let attempts = 0;
     const maxAttempts = 10;
+    let gameLoaded = false;
     
-    while (attempts < maxAttempts) {
+    while (attempts < maxAttempts && !gameLoaded) {
       try {
+        console.log(`Attempt ${attempts + 1} to load puzzle...`);
         const response = await this.http.get<any>(`https://sudoku-api.vercel.app/api/dosuku?query={newboard(limit:1){grids{value,solution,difficulty}}}`).toPromise();
         
         if (response && response.newboard && response.newboard.grids && response.newboard.grids.length > 0) {
@@ -1576,27 +1722,34 @@ export class AppComponent implements OnInit {
           const testBoard = this.convertGrid(grid.value);
           const emptyCells = this.countEmptyCells(testBoard);
           
+          console.log(`Puzzle loaded with ${emptyCells} empty cells`);
+          
           // Check if the puzzle matches our difficulty requirements
           if (this.isCorrectDifficulty(emptyCells)) {
             this.board = testBoard;
             this.originalBoard = JSON.parse(JSON.stringify(testBoard)); // Deep copy
             this.solution = this.convertGrid(grid.solution);
+            gameLoaded = true;
+            console.log('Game loaded successfully!');
             break;
+          } else {
+            console.log(`Puzzle difficulty doesn't match ${this.selectedDifficulty}, trying again...`);
           }
         }
         attempts++;
       } catch (error) {
         console.error('Failed to load puzzle from API, attempt', attempts + 1, error);
         attempts++;
+        
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
     
-    // If we couldn't find a suitable puzzle, use the last one we got
-    if (attempts >= maxAttempts && (!this.board || this.board.every(row => row.every(cell => cell === null)))) {
-      console.warn('Could not find puzzle matching difficulty requirements, using fallback');
-      this.board = Array(9).fill(null).map(() => Array(9).fill(null));
-      this.originalBoard = Array(9).fill(null).map(() => Array(9).fill(null));
-      this.solution = Array(9).fill(null).map(() => Array(9).fill(null));
+    // If we couldn't find a suitable puzzle, create a basic fallback with some numbers
+    if (!gameLoaded) {
+      console.warn('Could not load puzzle from API, creating fallback...');
+      this.createFallbackPuzzle();
     }
     
     this.loading = false;
@@ -1604,6 +1757,38 @@ export class AppComponent implements OnInit {
     this.lastMoveCorrect = null;
     this.highlightedNumber = null;
     this.updateEnemyCount();
+  }
+
+  createFallbackPuzzle() {
+    // Create a simple fallback puzzle for when API fails
+    this.board = [
+      [5, 3, null, null, 7, null, null, null, null],
+      [6, null, null, 1, 9, 5, null, null, null],
+      [null, 9, 8, null, null, null, null, 6, null],
+      [8, null, null, null, 6, null, null, null, 3],
+      [4, null, null, 8, null, 3, null, null, 1],
+      [7, null, null, null, 2, null, null, null, 6],
+      [null, 6, null, null, null, null, 2, 8, null],
+      [null, null, null, 4, 1, 9, null, null, 5],
+      [null, null, null, null, 8, null, null, 7, 9]
+    ];
+    
+    this.originalBoard = JSON.parse(JSON.stringify(this.board));
+    
+    // Solution for the fallback puzzle
+    this.solution = [
+      [5, 3, 4, 6, 7, 8, 9, 1, 2],
+      [6, 7, 2, 1, 9, 5, 3, 4, 8],
+      [1, 9, 8, 3, 4, 2, 5, 6, 7],
+      [8, 5, 9, 7, 6, 1, 4, 2, 3],
+      [4, 2, 6, 8, 5, 3, 7, 9, 1],
+      [7, 1, 3, 9, 2, 4, 8, 5, 6],
+      [9, 6, 1, 5, 3, 7, 2, 8, 4],
+      [2, 8, 7, 4, 1, 9, 6, 3, 5],
+      [3, 4, 5, 2, 8, 6, 1, 7, 9]
+    ];
+    
+    console.log('Fallback puzzle created');
   }
 
   countEmptyCells(board: (number | null)[][]): number {
@@ -2033,6 +2218,9 @@ export class AppComponent implements OnInit {
 
   restartGame() {
     this.stopAllAudio(); // Stop any currently playing audio
+    // Keep background music playing - just resume it if paused
+    this.resumeBackgroundMusic();
+    
     this.heroes = Array(3).fill(this.getHeroEmoji());
     this.gameOver = false;
     this.gameWon = false;

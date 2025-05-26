@@ -9,7 +9,7 @@
     "test": "ng test",
     "serve:ssr:sudoku-angular": "node dist/sudoku-angular/server/server.mjs",
     "build:prod": "ng build --configuration production --base-href \"/sudoku-angular/\" --output-mode=static",
-    "deploy": "npm run build:prod && npx angular-cli-ghpages --dir=dist/sudoku-angular"
+    "deploy": "npm run build:prod && npx angular-cli-ghpages --dir=dist/sudoku-angular/browser"
   },
   "private": true,
   "dependencies": {

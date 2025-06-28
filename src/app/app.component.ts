@@ -47,7 +47,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
                Your Army
             </div>
             <div class="heroes">
-              <span *ngFor="let hero of heroes" class="hero"><img src="/zombie_battle/army_icon.png" alt="Army" class="army-icon-img"></span>
+              <span *ngFor="let hero of heroes" class="hero"><img src="zombie_battle/army_icon.png" alt="Army" class="army-icon-img"></span>
             </div>
           </div>
           <div class="battle-image">
@@ -156,7 +156,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
                [class.selected]="previewTheme === 'soldiers'"
                (click)="selectPreviewTheme('soldiers')">
             <div class="theme-preview">
-              <img src="/zombie_battle/zombie_battle_1.jpeg" alt="Soldiers vs Zombies" class="theme-preview-img">
+              <img src="zombie_battle/zombie_battle_1.jpeg" alt="Soldiers vs Zombies" class="theme-preview-img">
             </div>
             <h3>Soldiers vs Zombies</h3>
             <p>Epic battle between brave soldiers and zombie hordes</p>
@@ -166,7 +166,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
                [class.selected]="previewTheme === 'samurai'"
                (click)="selectPreviewTheme('samurai')">
             <div class="theme-preview">
-              <img src="/ninja_battle/ninja_battle_1.jpeg" alt="Samurais vs Ninjas" class="theme-preview-img">
+              <img src="ninja_battle/ninja_battle_1.jpeg" alt="Samurais vs Ninjas" class="theme-preview-img">
             </div>
             <h3>Samurais vs Ninjas</h3>
             <p>Ancient warriors clash in legendary combat</p>
@@ -1376,59 +1376,59 @@ export class AppComponent implements OnInit {
       // Ninja battle images for samurai vs ninja theme
       // Last move was wrong
       if (this.lastMoveCorrect === false) {
-        return '/ninja_battle/ninja_battle_4.jpeg';
+        return 'ninja_battle/ninja_battle_4.jpeg';
       }
 
       // Last move was correct
       if (this.lastMoveCorrect === true) {
-        return '/ninja_battle/ninja_battle_3.jpeg';
+        return 'ninja_battle/ninja_battle_3.jpeg';
       }
 
       // Cell is selected, preparing to insert number
       if (this.selectedCell) {
-        return '/ninja_battle/ninja_battle_2.jpeg';
+        return 'ninja_battle/ninja_battle_2.jpeg';
       }
 
       // Default state - no cell selected
-      return '/ninja_battle/ninja_battle_1.jpeg';
+      return 'ninja_battle/ninja_battle_1.jpeg';
     } else {
       // Zombie battle images for soldiers theme
       // Last move was wrong
       if (this.lastMoveCorrect === false) {
-        return '/zombie_battle/zombie_battle_4.jpeg';
+        return 'zombie_battle/zombie_battle_4.jpeg';
       }
 
       // Last move was correct
       if (this.lastMoveCorrect === true) {
-        return '/zombie_battle/zombie_battle_3.jpeg';
+        return 'zombie_battle/zombie_battle_3.jpeg';
       }
 
       // Cell is selected, preparing to insert number
       if (this.selectedCell) {
-        return '/zombie_battle/zombie_battle_2.jpeg';
+        return 'zombie_battle/zombie_battle_2.jpeg';
       }
 
       // Default state - no cell selected
-      return '/zombie_battle/zombie_battle_1.jpeg';
+      return 'zombie_battle/zombie_battle_1.jpeg';
     }
   }
 
   getGameOverImage(): string {
     return this.selectedTheme === 'samurai' 
-      ? '/ninja_battle/ninja_battle_6.jpeg'
-      : '/zombie_battle/zombie_battle_6.jpeg';
+      ? 'ninja_battle/ninja_battle_6.jpeg'
+      : 'zombie_battle/zombie_battle_6.jpeg';
   }
 
   getGameWonImage(): string {
     return this.selectedTheme === 'samurai' 
-      ? '/ninja_battle/ninja_battle_5.jpeg'
-      : '/zombie_battle/zombie_battle_5.jpeg';
+      ? 'ninja_battle/ninja_battle_5.jpeg'
+      : 'zombie_battle/zombie_battle_5.jpeg';
   }
 
   getBackgroundImage(): string {
     return this.selectedTheme === 'samurai' 
-      ? '/ninja_battle/bacground.jpeg'
-      : '/zombie_battle/background.jpeg';
+      ? 'ninja_battle/bacground.jpeg'
+      : 'zombie_battle/background.jpeg';
   }
 
   initializeAudio() {
@@ -1440,17 +1440,17 @@ export class AppComponent implements OnInit {
       // Check if Audio is available (browser environment)
       if (typeof Audio !== 'undefined') {
         if (this.selectedTheme === 'samurai') {
-          this.winAudio = new Audio('/ninja_battle/ninja_victory.mp3');
-          this.loseAudio = new Audio('/ninja_battle/ninja_defeat.mp3');
-          this.correctMoveAudio = new Audio('/ninja_battle/one_soldier_wont.mp3');
-          this.wrongMoveAudio = new Audio('/ninja_battle/one_zombie_won.mp3');
-          this.backgroundMusic = new Audio('/ninja_battle/ninja_theme.mp3');
+          this.winAudio = new Audio('ninja_battle/ninja_victory.mp3');
+          this.loseAudio = new Audio('ninja_battle/ninja_defeat.mp3');
+          this.correctMoveAudio = new Audio('ninja_battle/one_soldier_wont.mp3');
+          this.wrongMoveAudio = new Audio('ninja_battle/one_zombie_won.mp3');
+          this.backgroundMusic = new Audio('ninja_battle/ninja_theme.mp3');
         } else {
-          this.winAudio = new Audio('/zombie_battle/zombie_defeat.mp3');
-          this.loseAudio = new Audio('/zombie_battle/zombie_victory.mp3');
-          this.correctMoveAudio = new Audio('/zombie_battle/one_soldier_won.mp3');
-          this.wrongMoveAudio = new Audio('/zombie_battle/one_zombie_won.mp3');
-          this.backgroundMusic = new Audio('/zombie_battle/zombie_theme.mp3');
+          this.winAudio = new Audio('zombie_battle/zombie_defeat.mp3');
+          this.loseAudio = new Audio('zombie_battle/zombie_victory.mp3');
+          this.correctMoveAudio = new Audio('zombie_battle/one_soldier_won.mp3');
+          this.wrongMoveAudio = new Audio('zombie_battle/one_zombie_won.mp3');
+          this.backgroundMusic = new Audio('zombie_battle/zombie_theme.mp3');
         }
 
         // Preload audio files
